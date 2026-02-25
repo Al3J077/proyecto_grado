@@ -4,38 +4,73 @@ import { supabase } from './supabase';
 function App() {
 
   //Aqui va la LOGICA (CEREBRO)
-  const [nombre, setNombre] = useState('');
+  const [datos, setDatos] = useState({
+    nombre: '',
+    stock: 0,
+    categoria: 'Materia Prima'
+  });
+
+function manejarCambio(evento) {
+  const { name, value } = evento.target;
+  //Muy importante:
+  setDatos({
+
+  ...datos,  //1. copia todo lo que ya habia(para no borrar el stock)
+    [name]: value //2. Actualiza SOLO el campo q se toca
+  })
+}
 
   // Funcion asincrona (espera a internet)
   async function guardarEnNube() {
     // le decimos a supabase que inserte un objeto nuevo en la tabla insumos
     const { error } = await supabase.from('insumos').insert({
-       nombre: nombre,
-      categoria: 'Prueba',
-      unidad_medida: 'unidad' });
+       nombre: datos.nombre,
+       stock_actual:datos.stock,
+      categoria: datos.categoria,
+      unidad_medida: 'gr' });
 
       if (error) {
-        alert('Error; ' + error.message)
+        alert('Error: ' + error.message)
         } else {
         alert('Insumo guardado en Supabase!')
-        setNombre('') // Limpiar el input
+        setDatos({   // Limpiar el input
+          nombre: '',
+          stock: 0,
+          categoria: 'Materia Prima'
+        });
+        } 
       }
-  }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>INVENTARIO DE PRODUCCIÓN</h1>
-      <input type="text"
+    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
+
+      {/*Input de NOMBRE*/}
+      <input
+      name="nombre"
+      type="text"
       placeholder="Nombre del insumo"
-      onChange={(e) => setNombre(e.target.value)} />
+      onChange={manejarCambio} />
 
-      <p>Estás escribiendo: {nombre}</p>
+      {/*Input de STOCK (numero) */}
+      <input
+      name="stock"
+      type="number"
+      placeholder="Stock disponible"
+      onChange={manejarCambio} />
 
-      <button onClick={guardarEnNube}>Guardar insumo</button>
+      {/* Select de CATEGORIA */}
+      <select name="categoria" onChange={manejarCambio}>
+     <option value="Materia prima">Materia prima</option>
+     <option value="Envase">Envase</option>        
+     <option value="Etiqueta">Etiqueta</option>
+      </select>
 
-      {/* Aqui va LO VISUAL (OJOS) */}
+      <button onClick={guardarEnNube}>Guardar TODO</button>
     </div>
-  )
-} 
 
+<p>Vista previa: {JSON.stringify(datos)}</p>
+    </>
+  );
+}
 export default App;
