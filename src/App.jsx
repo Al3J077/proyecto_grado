@@ -46,6 +46,9 @@ function Inventario(){
     categoria: 'Materia Prima'
   });
 
+  const [listaInsumos, setListaInsumos] = useState([]);
+
+
 function manejarCambio(evento) {
   const { name, value } = evento.target;
   //Muy importante:
@@ -76,6 +79,20 @@ function manejarCambio(evento) {
         });
         } 
       }
+
+      async function cargarInsumos() {
+        const { data, error } = await supabase.from('insumos').select('*');
+
+        if (error) {
+          alert("Error al cargar: " + error.message);
+        } else {
+          setListaInsumos(data);
+        }
+      }
+
+      useEffect(() => {
+        cargarInsumos();
+      }, []);
 
      async function cerrarSesion() {
       const { error } = await supabase.auth.signOut();
@@ -122,7 +139,33 @@ function manejarCambio(evento) {
       <button onClick={guardarEnNube}>Guardar TODO</button>
     </div>
 
+     <hr style={{ margin: '20px 0', width: '100%' }} />
+
+<h3>Mis insumos en la Nube</h3>
+
+<table border="1" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+  <thead>
+    <tr>
+      <th style={{ padding: '8px' }}>Nombre</th>
+      <th style={{ padding: '8px' }}>Categoria</th>
+      <th style={{ padding: '8px' }}>Stock</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    {listaInsumos.map((insumo) => (
+      <tr key={insumo.id}>
+        <td style={{ padding: '8px' }}>{insumo.nombre}</td>
+        <td style={{ padding: '8px' }}>{insumo.categoria}</td>
+        <td style={{ padding: '8px' }}>{insumo.stock_actual}</td>
+      </tr>
+    ))}
+    </tbody>
+</table>
+
+
 <p>Vista previa: {JSON.stringify(datos)}</p>
+
     </>
   );
 }
@@ -151,9 +194,13 @@ function App() {
     // si la sesion esta vacia se mostrara el componente login
     return <Login />;
   } else {
+
     //si la sesion tiene datos, se pasará directamente al inventario
     return <Inventario />;
-  }
-  }
 
+
+  }
+}
+
+  
 export default App;
