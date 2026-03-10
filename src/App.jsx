@@ -72,13 +72,14 @@ function manejarCambio(evento) {
         alert('Error: ' + error.message)
         } else {
         alert('Insumo guardado en Supabase!')
+        cargarInsumos();
         setDatos({   // Limpiar el input
           nombre: '',
           stock: 0,
           categoria: 'Materia Prima'
         });
         } 
-      }
+      }89'0
 
       async function cargarInsumos() {
         const { data, error } = await supabase.from('insumos').select('*');
