@@ -47,6 +47,7 @@ function Inventario(){
   });
 
   const [listaInsumos, setListaInsumos] = useState([]);
+  const [idEditando, setIdEditando] = useState(null);
 
 
 function manejarCambio(evento) {
@@ -59,19 +60,35 @@ function manejarCambio(evento) {
   })
 }
 
+function cargarParaEditar(insumo) {
+  // Llenar formlario con dstos de la fila
+  setDatos({
+    nombre: insumo.nombre,
+    stock: insumo.stock_actual,
+    categoria: insumo.categoria
+  });
+  // se enciende el interruptor guardando el id del insumo
+  setIdEditando(insumo.id);
+
+}
+
+
   // Funcion asincrona (espera a internet)
   async function guardarEnNube() {
-    // le decimos a supabase que inserte un objeto nuevo en la tabla insumos
-    const { error } = await supabase.from('insumos').insert({
-       nombre: datos.nombre,
-       stock_actual:datos.stock,
+
+    // Modo de insertar(no actualizar) si el interruptor esta apagado (null)
+    if (idEditando === null)  {
+      const { error } = await supabase.from('insumos').insert({
+      nombre: datos.nombre,
+      stock_actual:datos.stock,
       categoria: datos.categoria,
-      unidad_medida: 'gr' });
+      unidad_medida: 'gr' 
+    });
 
       if (error) {
-        alert('Error: ' + error.message)
+        alert('Error: ' + error.message);
         } else {
-        alert('Insumo guardado en Supabase!')
+        alert('Insumo guardado');
         cargarInsumos();
         setDatos({   // Limpiar el input
           nombre: '',
@@ -79,7 +96,25 @@ function manejarCambio(evento) {
           categoria: 'Materia Prima'
         });
         } 
-      }89'0
+      }
+    else {
+      const { error } = await supabase.from('insumos')
+      .update({
+        nombre: datos.nombre,
+        stock_actual: datos.stock,
+        categoria: datos.categoria
+      })
+      .eq('id', idEditando); // importante, se le dice q fila editar
+
+      if (error) alert('Error: ' + error.message);
+      else {
+        alert('Insumo actualizaddo correctamente.');
+        setIdEditando(null); // se apaga el interruptor
+        setDatos({ nombre: '', stock: 0, categoria: 'Materia prima' });
+        cargarInsumos(); // Se recarga la tabla
+      }
+    }
+  }
 
       async function cargarInsumos() {
         const { data, error } = await supabase.from('insumos').select('*');
@@ -88,6 +123,21 @@ function manejarCambio(evento) {
           alert("Error al cargar: " + error.message);
         } else {
           setListaInsumos(data);
+        }
+      }
+
+      async function eliminarInsumo(idParaBorrar) {
+        // se le dice a supabase que borre el registro con el id que le pasamos
+        const { error } = await supabase 
+        .from('insumos')
+        .delete()
+        .eq('id', idParaBorrar); // eq significa "donde el campo id sea igual a idParaBorrar"
+
+        if (error) {
+          alert("No se pudo borrar: " + error.message);
+        } else {
+          alert("INSUMO ELIMINADO");
+          cargarInsumos();
         }
       }
 
@@ -150,6 +200,7 @@ function manejarCambio(evento) {
       <th style={{ padding: '8px' }}>Nombre</th>
       <th style={{ padding: '8px' }}>Categoria</th>
       <th style={{ padding: '8px' }}>Stock</th>
+      <th style={{ padding: '8px' }}>Acciones</th>
     </tr>
   </thead>
   <tbody>
@@ -159,6 +210,15 @@ function manejarCambio(evento) {
         <td style={{ padding: '8px' }}>{insumo.nombre}</td>
         <td style={{ padding: '8px' }}>{insumo.categoria}</td>
         <td style={{ padding: '8px' }}>{insumo.stock_actual}</td>
+        <td style={{ padding: '8px' }}>
+          <button onClick={() => cargarParaEditar(insumo)} style={{ background: '#0275d8', color: 'white', border: 'none', padding: '5px', cursor: 'pointer', marginRight: '5px' }}
+          >Editar</button>
+          </td>
+        <td style={{ padding: '8px' }}>
+          <button onClick={() => eliminarInsumo(insumo.id)}
+          style={{ background: 'red', color: 'white', border: 'none', padding: '5px', cursor: 'pointer' }}
+            >Borrar</button>
+        </td>
       </tr>
     ))}
     </tbody>
