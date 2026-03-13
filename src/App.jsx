@@ -42,8 +42,12 @@ function Inventario(){
   //Aqui va la LOGICA (CEREBRO)
   const [datos, setDatos] = useState({
     nombre: '',
-    stock: 0,
-    categoria: 'Materia Prima'
+    stock: '',
+    categoria: 'Materia Prima',
+    proveedor: '',
+    precio_unidad: '',
+    fecha_vencimiento: '',
+    es_peligroso: 'false'
   });
 
   const [listaInsumos, setListaInsumos] = useState([]);
@@ -61,57 +65,72 @@ function manejarCambio(evento) {
 }
 
 function cargarParaEditar(insumo) {
-  // Llenar formlario con dstos de la fila
   setDatos({
     nombre: insumo.nombre,
     stock: insumo.stock_actual,
-    categoria: insumo.categoria
+    categoria: insumo.categoria,
+    proveedor: insumo.proveedor || '',
+    precio_unidad: insumo.precio_unidad || 0,
+    fecha_vencimiento: insumo.fecha_vencimiento || '',
+    es_peligroso: insumo.es_peligroso || 'false'
   });
-  // se enciende el interruptor guardando el id del insumo
   setIdEditando(insumo.id);
-
 }
 
 
   // Funcion asincrona (espera a internet)
+// Funcion asincrona (espera a internet)
   async function guardarEnNube() {
 
-    // Modo de insertar(no actualizar) si el interruptor esta apagado (null)
+    //  FILTROS DE SEGURIDAD:
+    const fechaParaGuardar = datos.fecha_vencimiento === '' ? null : datos.fecha_vencimiento;
+    const esPeligrosoBooleano = datos.es_peligroso === 'true';
+    
+    // Si dejan los números vacíos, mandamos un 0 para que Supabase no explote
+    const stockSeguro = datos.stock === '' ? 0 : datos.stock;
+    const precioSeguro = datos.precio_unidad === '' ? 0 : datos.precio_unidad;
+
+    // Modo de insertar
     if (idEditando === null)  {
       const { error } = await supabase.from('insumos').insert({
-      nombre: datos.nombre,
-      stock_actual:datos.stock,
-      categoria: datos.categoria,
-      unidad_medida: 'gr' 
-    });
+        nombre: datos.nombre,
+        stock_actual: stockSeguro,       // Usamos el número seguro
+        categoria: datos.categoria,
+        proveedor: datos.proveedor,
+        precio_unidad: precioSeguro,     // Usamos el número seguro
+        fecha_vencimiento: fechaParaGuardar,
+        es_peligroso: esPeligrosoBooleano,
+        unidad_medida: 'gr'
+      });
 
       if (error) {
-        alert('Error: ' + error.message);
-        } else {
+        alert('Error al guardar: ' + error.message);
+      } else {
         alert('Insumo guardado');
         cargarInsumos();
-        setDatos({   // Limpiar el input
-          nombre: '',
-          stock: 0,
-          categoria: 'Materia Prima'
-        });
-        } 
-      }
+        setDatos({ nombre: '', stock: '', categoria: 'Materia prima', proveedor: '', precio_unidad: '', fecha_vencimiento: '', es_peligroso: 'false' });
+      } 
+    }
+    // Modo Editar
     else {
       const { error } = await supabase.from('insumos')
       .update({
         nombre: datos.nombre,
-        stock_actual: datos.stock,
-        categoria: datos.categoria
+        stock_actual: stockSeguro,       // Usamos el número seguro
+        categoria: datos.categoria,
+        proveedor: datos.proveedor,
+        precio_unidad: precioSeguro,     // Usamos el número seguro
+        fecha_vencimiento: fechaParaGuardar,
+        es_peligroso: esPeligrosoBooleano    
       })
-      .eq('id', idEditando); // importante, se le dice q fila editar
+      .eq('id', idEditando);
 
-      if (error) alert('Error: ' + error.message);
+      if (error) alert('Error al actualizar: ' + error.message);
       else {
-        alert('Insumo actualizaddo correctamente.');
-        setIdEditando(null); // se apaga el interruptor
-        setDatos({ nombre: '', stock: 0, categoria: 'Materia prima' });
-        cargarInsumos(); // Se recarga la tabla
+        alert('Insumo actualizado correctamente.');
+        setIdEditando(null);
+        setDatos({ nombre: '', stock: 0, categoria: 'Materia prima', proveedor: '', precio_unidad: 0, fecha_vencimiento: '', es_peligroso: 'false' });
+        cargarInsumos(); 
       }
     }
   }
@@ -165,26 +184,21 @@ function cargarParaEditar(insumo) {
     </div>
 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
+      <input name="nombre" value={datos.nombre} type="text" placeholder="Nombre del insumo" onChange={manejarCambio} />
+      <input name="stock" value={datos.stock} type="number" placeholder="Stock disponible" onChange={manejarCambio} />
+      <input name="proveedor" value={datos.proveedor} type="text" placeholder="Nombre del proveedor" onChange={manejarCambio} />
+      <input name="precio_unidad" value={datos.precio_unidad} type="number" placeholder="Precio x Unidad ($)" onChange={manejarCambio} />
+      <input name="fecha_vencimiento" value={datos.fecha_vencimiento} type="date" onChange={manejarCambio} />
 
-      {/*Input de NOMBRE*/}
-      <input
-      name="nombre"
-      type="text"
-      placeholder="Nombre del insumo"
-      onChange={manejarCambio} />
+      <select name="es_peligroso" value={datos.es_peligroso} onChange={manejarCambio}>
+        <option value="false">🟢 Seguro</option>
+        <option value="true">🔴 ATENCION: Quimico Peligroso</option>
+      </select>
 
-      {/*Input de STOCK (numero) */}
-      <input
-      name="stock"
-      type="number"
-      placeholder="Stock disponible"
-      onChange={manejarCambio} />
-
-      {/* Select de CATEGORIA */}
-      <select name="categoria" onChange={manejarCambio}>
-     <option value="Materia prima">Materia prima</option>
-     <option value="Envase">Envase</option>        
-     <option value="Etiqueta">Etiqueta</option>
+      <select name="categoria" value={datos.categoria} onChange={manejarCambio}>
+        <option value="Materia prima">Materia prima</option>
+        <option value="Envase">Envase</option>        
+        <option value="Etiqueta">Etiqueta</option>
       </select>
 
       <button onClick={guardarEnNube}>Guardar TODO</button>
@@ -200,28 +214,45 @@ function cargarParaEditar(insumo) {
       <th style={{ padding: '8px' }}>Nombre</th>
       <th style={{ padding: '8px' }}>Categoria</th>
       <th style={{ padding: '8px' }}>Stock</th>
+      <th style={{ padding: '8px' }}>Proveedor</th>
+      <th style={{ padding: '8px' }}>Precio</th>
+      <th style={{ padding: '8px' }}>Vence</th>
       <th style={{ padding: '8px' }}>Acciones</th>
     </tr>
   </thead>
   <tbody>
+    {listaInsumos.map((insumo) => {
+      let colorFondo = 'transparent';
+      if (insumo.stock_actual === 0) colorFondo = '#ffcccc';
+      else if (insumo.stock_actual <= 10) colorFondo = '#fff3cd';
 
-    {listaInsumos.map((insumo) => (
-      <tr key={insumo.id}>
-        <td style={{ padding: '8px' }}>{insumo.nombre}</td>
-        <td style={{ padding: '8px' }}>{insumo.categoria}</td>
-        <td style={{ padding: '8px' }}>{insumo.stock_actual}</td>
-        <td style={{ padding: '8px' }}>
-          <button onClick={() => cargarParaEditar(insumo)} style={{ background: '#0275d8', color: 'white', border: 'none', padding: '5px', cursor: 'pointer', marginRight: '5px' }}
-          >Editar</button>
+      let colorTexto = insumo.es_peligroso === 'true' || insumo.es_peligroso === true ? 'red' : 'black';
+      let grosorTexto = insumo.es_peligroso === 'true' || insumo.es_peligroso === true ? 'bold' : 'normal';
+
+      return (
+        <tr key={insumo.id} style={{ backgroundColor: colorFondo, color: colorTexto, fontWeight: grosorTexto }}>
+          <td style={{ padding: '8px'}}>{insumo.nombre}</td>
+          <td style={{ padding: '8px'}}>{insumo.categoria}</td>
+          <td style={{ padding: '8px' }}>
+            {insumo.stock_actual} {insumo.stock_actual <= 10 ? '⚠️' : ''}
           </td>
-        <td style={{ padding: '8px' }}>
-          <button onClick={() => eliminarInsumo(insumo.id)}
-          style={{ background: 'red', color: 'white', border: 'none', padding: '5px', cursor: 'pointer' }}
-            >Borrar</button>
-        </td>
-      </tr>
-    ))}
-    </tbody>
+
+          <td style={{ padding: '8px' }}>{insumo.proveedor}</td>
+          <td style={{ padding: '8px' }}>${insumo.precio_unidad}</td>
+          <td style={{ padding: '8px' }}>{insumo.fecha_vencimiento}</td>
+
+          <td style={{ padding: '8px' }}>
+            <button onClick={() => cargarParaEditar(insumo)} style={{ background: '#0275d8', color: 'white', border: 'none', padding: '5px', cursor: 'pointer', marginRight: '5px' }}>
+              Editar
+            </button>
+            <button onClick={() => eliminarInsumo(insumo.id)} style={{ background: 'red', color: 'white', border: 'none', padding: '5px', cursor: 'pointer' }}>
+              Borrar
+            </button>
+          </td>
+        </tr>
+      );
+   })}
+  </tbody>
 </table>
 
 
